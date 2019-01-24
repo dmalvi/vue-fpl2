@@ -1,231 +1,198 @@
 <template>
   <div class="hello">
     <h1>{{ title }}</h1>
-    <button class="btn btn-outline-success" @click="fetchAspside">Get FPL data</button>
+    <!-- <button class="btn btn-outline-success" @click="fetchAspside">Get FPL data</button>
     <button class="btn btn-outline-success" @click="fetchPlayerDb">Get Player DB</button>
     <button class="btn btn-outline-success" @click="fetchCaptains">Get Captains</button>
     <button class="btn btn-outline-success" @click="completeDetails">Complete details</button>
     <button class="btn btn-outline-success" @click="captainNames">Display Captains</button>
-    <div v-if="teamWithCaptainIds.length">
+    <button class="btn btn-outline-success" @click="runner">RUNNER</button> -->
+    <div v-if="allTeamDetails.length && !loading">
       <table class="table">
         <thead>
           <tr>
             <th>Rank</th>
             <th>Name</th>
             <!-- <th>Team ID</th> -->
+            <th></th>
             <th>Points</th>
             <th>Captain</th>
             <th>Vice Captain</th>
+            <th>Tranfer Costs</th>
           </tr>
         </thead>
 
-        <tbody v-for="team in teamWithCaptainIds" v-bind:key="team.rank">
+        <tbody v-for="team in allTeamDetails" v-bind:key="team.rank">
           <tr>
             <td>{{team.rank}}</td>
             <td>{{team.entry_name}}</td>
+            <td><b v-if="team.gw_chip" class="chip">{{team.gw_chip.toUpperCase()}}</b></td>
             <!-- <td>{{team.entry}}</td> -->
-            <td>{{team.total}}</td>
+            <td><strong>{{team.total}}</strong></td>
             <td>{{team.captain_name}}</td>
             <td>{{team.viceCaptain_name}}</td>
+            <td v-if="team.transferCost > 0">-{{team.transferCost}}</td>
           </tr>
         </tbody>
 
       </table>
     </div>
-    <!-- <div v-if="loading">
-      {{ loading }}
-    </div> -->
+    <div v-if="loading">
+       <div class="loader"></div>
+    </div>
   </div>
 </template>
 
 <script>
-
 export default {
   data() {
     return {
-      title: 'Aspside FPL',
+      title: 'FPL - Aspside',
       teams: [],
       details: [],
       playersDb: [],
-      loading: '',
-      captainsArray:[],
-      capDbTemp: '',
-      teamWithCaptainIds:[]
+      loading: false,
+      allTeamDetails: []
     }
   },
   created() {
-    // this.fetchAspside();
-    // this.fetchPlayerDb();
-    console.log('created!');
-  },
-  mounted() {
-    // this.fetchCaptains();
-    console.log('mounted!');
+    this.completeDetails()
   },
   methods: {
-  kbk() {
+    async fetchAspside() {
+      // LeagueID: 116190
+      this.loading = true
+      let url = 'https://cors-anywhere.herokuapp.com/https://fantasy.premierleague.com/drf/leagues-classic-standings/116190'
+      const leagueResponse = await fetch(url)
+        .then(response => response.json())
+      this.teams = await leagueResponse.standings.results;
+      console.log(leagueResponse.standings.results);
+    },
+    // https://fantasy.premierleague.com/drf/bootstrap-static
+    async fetchPlayerDb() {
+      let url = 'https://cors-anywhere.herokuapp.com/https://fantasy.premierleague.com/drf/bootstrap-static'
+      const pdbResponse = await fetch(url)
+        .then(response => response.json())
+      this.playersDb = await pdbResponse.elements;
+      console.log(pdbResponse.elements);
+    },
+    async fetchCaptains() {
+      // https://fantasy.premierleague.com/drf/entry/877840/event/22/picks
+      let urlPt1 = 'https://cors-anywhere.herokuapp.com/https://fantasy.premierleague.com/drf/entry/';
+      let urlPt3 = '/event/';
+      let urlPt4Gw = '23';
+      let urlPt5 = '/picks';
+      for (let team of this.teams) {
+        let urlPt2TeamId = team.entry;
+        // let cAndVc = {
+        //   teamId: team.entry,
+        //   name: team.entry_name,
+        //   captain: '',
+        //   captain_name: '',
+        //   viceCaptain: '',
+        //   viceCaptain_name: '',
+        //   gw_chip: '',
+        //   transferCost: ''
+        // };
+        let capFetch = await fetch(urlPt1 + urlPt2TeamId + urlPt3 + urlPt4Gw + urlPt5)
+          .then(response => response.json())
+        let userData = await capFetch
 
-  },
-  fetchAspside() {
-    // LeagueID: 116190
-    // this.loading = 'loading...'
-    let url = 'https://cors-anywhere.herokuapp.com/https://fantasy.premierleague.com/drf/leagues-classic-standings/116190'
-     fetch(url)
-        .then(response => response.json())
-        .then (jsonResponse => {
-          // this.teamData = jsonResponse;
-          this.teams = jsonResponse.standings.results;
-          console.log('League info done!');
-        })
-        // this.loading = '';
-  },
-  // https://fantasy.premierleague.com/drf/bootstrap-static
-  fetchPlayerDb(){
-    let url = 'https://cors-anywhere.herokuapp.com/https://fantasy.premierleague.com/drf/bootstrap-static'
-     fetch(url)
-        .then(response => response.json())
-        .then (jsonResponse => {
-          this.playersDb = jsonResponse.elements;
-          console.log('Players done!');
-        })
-  },
-  fetchCaptains(){
-    // https://fantasy.premierleague.com/drf/entry/877840/event/22/picks
-    let urlPart1 = 'https://cors-anywhere.herokuapp.com/https://fantasy.premierleague.com/drf/entry/';
-    let urlPart3 = '/event/';
-    let urlPart4Gw = '23';
-    let urlPart5 = '/picks';
-    for (let team of this.teams) {
-      let urlPart2TeamId = team.entry;
-      let cAndVc = {
-        teamId: team.entry,
-        name: team.entry_name,
-        captain: '',
-        captain_name: '',
-        viceCaptain: '',
-        viceCaptain_name: '',
-      };
-      fetch(urlPart1+urlPart2TeamId+urlPart3+urlPart4Gw+urlPart5)
-         .then(response => response.json())
-         .then (jsonResponse => {
-          let userData = jsonResponse;
-            for ( let players of userData.picks){
-              if (players.is_captain) {
-                cAndVc.captain = players.element;
-              } if (players.is_vice_captain) {
-                cAndVc.viceCaptain = players.element;
-              }
+        let cAndVc = {
+          teamId: team.entry,
+          name: team.entry_name,
+          captain: '',
+          captain_name: '',
+          viceCaptain: '',
+          viceCaptain_name: '',
+          gw_chip: userData.active_chip,
+          transferCost: userData.entry_history.event_transfers_cost
+        };
+
+        for (let players of userData.picks) {
+          if (players.is_captain) {
+            cAndVc.captain = players.element;
+          }
+          if (players.is_vice_captain) {
+            cAndVc.viceCaptain = players.element;
+          }
+        }
+        this.details.push(cAndVc);
+      }
+      console.log('2:Finished fetched captains');
+    },
+    async runner() {
+      const one = await this.fetchAspside();
+      const two = await this.fetchCaptains();
+      const three = await this.fetchPlayerDb();
+      return one + two + three
+    },
+    async completeDetails() {
+      let runnerWait = await this.runner();
+
+      let aspsideTeams = [...this.teams]
+      let captainsFromDb = [...this.details]
+      let finalArr = []
+      for (let team of aspsideTeams) {
+        let objToPush = {}
+        captainsFromDb.forEach(function(tm) {
+          if (tm.teamId === team.entry) {
+            objToPush = { ...tm,
+              ...team
             }
-            this.details.push(cAndVc);
-         })
+            finalArr.push(objToPush)
+          }
+        })
+      }
+      this.allTeamDetails = finalArr;
+      console.log('4:Matched ids with names');
+      this.captainNames()
+      console.log('Done and done!');
+    },
+    captainNames() {
+      // id / first_name / second_name
+      let players = [...this.playersDb]
+      for (let lag of this.allTeamDetails) {
+        players.forEach(function(pl) {
+          if (pl.id === lag.captain) {
+            lag.captain_name = pl.second_name
+            // lag.captain_name = pl.first_name + ' ' + pl.second_name
+          } else if (pl.id === lag.viceCaptain) {
+            lag.viceCaptain_name = pl.second_name
+            // lag.viceCaptain_name = pl.first_name + ' ' + pl.second_name
+          } else {
+            return null
+          }
+        });
+      }
+      this.loading = false;
+      console.log('5:Given captains names');
     }
-  },
-  completeDetails() {
-    let aspsideTeams = [...this.teams]
-    let captainsFromDb = [...this.details]
-    let finalArr = []
-    for (let team of aspsideTeams) {
-      let objToPush = {}
-      captainsFromDb.forEach(function(tm){
-        if (tm.teamId === team.entry){
-          objToPush = { ...tm, ...team}
-          finalArr.push(objToPush)
-        }
-      })
-    }
-    this.teamWithCaptainIds = finalArr;
-    this.captainNames()
-  },
-  captainNames() {
-    // id / first_name / second_name
-    let players = [...this.playersDb]
-    for (let lag of this.teamWithCaptainIds) {
-      players.forEach(function(pl){
-        if (pl.id === lag.captain) {
-          lag.captain_name = pl.first_name +' '+ pl.second_name
-        } else if (pl.id === lag.viceCaptain){
-          lag.viceCaptain_name = pl.first_name +' '+ pl.second_name
-        } else {
-          return null
-        }
-      });
-    }
-  }
-
-  //   fetchLeague(){
-  //     let users;
-  //     let url = 'https://cors-anywhere.herokuapp.com/https://fantasy.premierleague.com/drf/leagues-classic-standings/116190'
-  //     let request = new XMLHttpRequest();
-  //     // let users = '';
-  //     request.open('GET', url, true);
-  //     // request.setRequestHeader("Access-Control-Allow-Origin", "*");
-  //     request.onload = function () {
-  //     // Convert JSON data to an object
-  //     users = JSON.parse(this.response);
-  //     this.teams = users;
-  //     // this.teams.push(users.standings.results);
-  //     // console.log(this.response);
-  //   }
-  //   request.send();
-  // },
-    // fetch2(){
-    //   let createCORSRequest = function (method, url) {
-    //   let xhr = new XMLHttpRequest();
-    //     xhr.open(method, url, true);
-    //     // xhr.setRequestHeader("Access-Control-Allow-Origin", "*");
-    //     return xhr;
-    // };
-    //
-    // let xhr = createCORSRequest('GET', 'https://crossorigin.me/https://fantasy.premierleague.com/drf/leagues-classic-standings/116190');
-    //
-    // xhr.onload = function () {
-    //   console.log(JSON.parse(this.responseText));
-    // };
-    //
-    // // xhr.onerror = function () {};
-    // },
-    // fetch3(){
-    //   let url = 'https://crossorigin.me/https://fantasy.premierleague.com/drf/leagues-classic-standings/116190'
-    //   fetch(url, {
-    //     method: 'GET'
-    //     })
-    //     .then(response => response.json())
-    //     .then (jsonResponse => {
-    //       this.teams = jsonResponse;
-    //       console.log(this.teams);
-    //       console.log(jsonResponse);
-    //     })
-    //
-    // },
-    // fetch4(){
-    //   let url = 'https://crossorigin.me/https://fantasy.premierleague.com/drf/leagues-classic-standings/116190'
-    //   fetch(url)
-    //     .then(response => response.json())
-    //     .then (jsonResponse => {
-    //       this.teams = jsonResponse;
-    //       console.log(jsonResponse);
-    //     })
-    //
-    // },
   },
 }
-
-
-// let request = new XMLHttpRequest();
-//     request.open('GET', 'users.json', true);
-//       request.onload = function () {
-//       // Convert JSON data to an object
-//       let users = JSON.parse(this.response);
-//       let output = '';
-//       for (var i = 0; i < users.length; i++) {
-//         output += '<li>' + users[i].name + ' is ' + users[i].age + ' years old.'; '</li>'
-//       }
-//       document.getElementById('users').innerHTML = output;
-//     }
-//     request.send();
 </script>
 
 <style scoped>
+.loader {
+  border: 16px solid #38003c;
+  border-top: 16px solid #00ff87;
+  border-radius: 50%;
+  width: 80px;
+  height: 80px;
+  margin: auto;
+  padding-top: 2em;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.chip {
+  color: red;
+}
+
 h3 {
   margin: 40px 0 0;
 }
