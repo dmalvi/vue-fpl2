@@ -1,3 +1,3 @@
 module.exports = {
-  publicPath: '/vue-fpl/'
+  publicPath: 'https://dmalvi.github.io/vue-fpl/'
 }
