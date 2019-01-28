@@ -1,6 +1,6 @@
 <template>
   <div class="hello">
-    <h1>{{ title }}</h1>
+    <h1>{{ title }} - Gameweek: {{ gw }}</h1>
     <!-- <button class="btn btn-outline-success" @click="fetchAspside">Get FPL data</button>
     <button class="btn btn-outline-success" @click="fetchPlayerDb">Get Player DB</button>
     <button class="btn btn-outline-success" @click="fetchCaptains">Get Captains</button>
@@ -24,9 +24,9 @@
 
         <tbody v-for="team in allTeamDetails" v-bind:key="team.rank">
           <tr>
-            <td>{{team.rank}}</td>
+            <td class="rank">{{team.rank}} <div :class="team.movement"></div></td>
             <td>{{team.entry_name}}</td>
-            <td><b v-if="team.gw_chip" class="chip">{{team.gw_chip.toUpperCase()}}</b></td>
+            <td><small v-if="team.gw_chip" class="chip">{{team.gw_chip.toUpperCase()}}</small></td>
             <!-- <td>{{team.entry}}</td> -->
             <td><strong>{{team.total}}</strong></td>
             <td>{{team.captain_name}}</td>
@@ -40,6 +40,9 @@
     <div v-if="loading">
        <div class="loader"></div>
     </div>
+    <div v-if="!loading && errMsg === 'undefined'">
+       <div class="errorMessage">Sorry</div>
+    </div>
   </div>
 </template>
 
@@ -52,7 +55,9 @@ export default {
       details: [],
       playersDb: [],
       loading: false,
-      allTeamDetails: []
+      allTeamDetails: [],
+      gw: 23,
+      errMsg: '',
     }
   },
   created() {
@@ -80,7 +85,7 @@ export default {
       // https://fantasy.premierleague.com/drf/entry/877840/event/22/picks
       let urlPt1 = 'https://cors-anywhere.herokuapp.com/https://fantasy.premierleague.com/drf/entry/';
       let urlPt3 = '/event/';
-      let urlPt4Gw = '23';
+      let urlPt4Gw = this.gw;
       let urlPt5 = '/picks';
       for (let team of this.teams) {
         let urlPt2TeamId = team.entry;
@@ -97,7 +102,6 @@ export default {
         let capFetch = await fetch(urlPt1 + urlPt2TeamId + urlPt3 + urlPt4Gw + urlPt5)
           .then(response => response.json())
         let userData = await capFetch
-
         let cAndVc = {
           teamId: team.entry,
           name: team.entry_name,
@@ -108,7 +112,6 @@ export default {
           gw_chip: userData.active_chip,
           transferCost: userData.entry_history.event_transfers_cost
         };
-
         for (let players of userData.picks) {
           if (players.is_captain) {
             cAndVc.captain = players.element;
@@ -173,6 +176,43 @@ export default {
 </script>
 
 <style scoped>
+td, th, h1{
+  text-align: center;
+}
+
+.rank {
+  text-align: left;
+  padding-left: 1.3rem;
+  display: flex;
+  border: 0;
+}
+.same {
+  align-self: baseline;
+  width: 6px;
+  height: 2px;
+  border-bottom: 3px solid darkgrey;
+  margin: auto;
+}
+
+.up {
+  align-self: baseline;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 5px solid green;
+  margin: auto;
+}
+
+.down {
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 5px solid #f00;
+  margin: auto;
+}
+
 .loader {
   border: 16px solid #38003c;
   border-top: 16px solid #00ff87;
@@ -180,7 +220,7 @@ export default {
   width: 80px;
   height: 80px;
   margin: auto;
-  padding-top: 2em;
+  margin-top: 50px;
   animation: spin 1s linear infinite;
 }
 
