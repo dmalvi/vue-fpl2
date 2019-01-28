@@ -1,12 +1,7 @@
 <template>
   <div class="hello">
-    <h1>{{ title }} - Gameweek: {{ gw }}</h1>
-    <!-- <button class="btn btn-outline-success" @click="fetchAspside">Get FPL data</button>
-    <button class="btn btn-outline-success" @click="fetchPlayerDb">Get Player DB</button>
-    <button class="btn btn-outline-success" @click="fetchCaptains">Get Captains</button>
-    <button class="btn btn-outline-success" @click="completeDetails">Complete details</button>
-    <button class="btn btn-outline-success" @click="captainNames">Display Captains</button>
-    <button class="btn btn-outline-success" @click="runner">RUNNER</button> -->
+    <h1>{{ title }}{{ gw }}</h1>
+    <!-- <button class="btn btn-outline-success" @click="checkCurrentEvent">Check event</button> -->
     <div v-if="allTeamDetails.length && !loading">
       <table class="table">
         <thead>
@@ -39,9 +34,7 @@
     </div>
     <div v-if="loading">
        <div class="loader"></div>
-    </div>
-    <div v-if="!loading && errMsg === 'undefined'">
-       <div class="errorMessage">Sorry</div>
+       <h3 class="status">{{ statusMsg }}</h3>
     </div>
   </div>
 </template>
@@ -50,38 +43,55 @@
 export default {
   data() {
     return {
-      title: 'FPL - Aspside',
+      title: 'FPL | Aspside | GW#: ',
       teams: [],
       details: [],
       playersDb: [],
       loading: false,
       allTeamDetails: [],
-      gw: 23,
-      errMsg: '',
+      gw: '',
+      statusMsg: '',
+      gwData: []
     }
   },
   created() {
     this.completeDetails()
   },
   methods: {
+    async checkCurrentEvent (){
+      this.loading = true
+      this.statusMsg = 'checking current gw...'
+      let url = 'https://cors-anywhere.herokuapp.com/https://fantasy.premierleague.com/drf/events'
+      const eventResponse = await fetch(url)
+        .then(response => response.json())
+      this.gwData = await eventResponse
+      for (let gameweek of this.gwData){
+        if (gameweek.is_current) {
+          this.gw = gameweek.id
+        }
+      }
+      console.log('01');
+    },
     async fetchAspside() {
       // LeagueID: 116190
-      this.loading = true
+      this.statusMsg = 'fetching league...'
       let url = 'https://cors-anywhere.herokuapp.com/https://fantasy.premierleague.com/drf/leagues-classic-standings/116190'
       const leagueResponse = await fetch(url)
         .then(response => response.json())
       this.teams = await leagueResponse.standings.results;
-      console.log(leagueResponse.standings.results);
+      console.log('02');
     },
     // https://fantasy.premierleague.com/drf/bootstrap-static
     async fetchPlayerDb() {
+      this.statusMsg = 'building player database...'
       let url = 'https://cors-anywhere.herokuapp.com/https://fantasy.premierleague.com/drf/bootstrap-static'
       const pdbResponse = await fetch(url)
         .then(response => response.json())
       this.playersDb = await pdbResponse.elements;
-      console.log(pdbResponse.elements);
+      console.log('04');
     },
     async fetchCaptains() {
+      this.statusMsg = 'fetching captains...'
       // https://fantasy.premierleague.com/drf/entry/877840/event/22/picks
       let urlPt1 = 'https://cors-anywhere.herokuapp.com/https://fantasy.premierleague.com/drf/entry/';
       let urlPt3 = '/event/';
@@ -122,17 +132,18 @@ export default {
         }
         this.details.push(cAndVc);
       }
-      console.log('2:Finished fetched captains');
+      console.log('03');
     },
     async runner() {
+      const zero = await this.checkCurrentEvent();
       const one = await this.fetchAspside();
       const two = await this.fetchCaptains();
       const three = await this.fetchPlayerDb();
-      return one + two + three
+      return zero + one + two + three
     },
     async completeDetails() {
       let runnerWait = await this.runner();
-
+      this.statusMsg = 'finishing teams...'
       let aspsideTeams = [...this.teams]
       let captainsFromDb = [...this.details]
       let finalArr = []
@@ -148,12 +159,13 @@ export default {
         })
       }
       this.allTeamDetails = finalArr;
-      console.log('4:Matched ids with names');
+      console.log('05');
       this.captainNames()
-      console.log('Done and done!');
+      console.log('07 Done and done!');
     },
     captainNames() {
       // id / first_name / second_name
+      this.statusMsg = 'finishing final details...'
       let players = [...this.playersDb]
       for (let lag of this.allTeamDetails) {
         players.forEach(function(pl) {
@@ -168,8 +180,9 @@ export default {
           }
         });
       }
+      this.statusMsg = '';
       this.loading = false;
-      console.log('5:Given captains names');
+      console.log('06');
     }
   },
 }
@@ -178,6 +191,10 @@ export default {
 <style scoped>
 td, th, h1{
   text-align: center;
+}
+.status {
+  text-align: center;
+  margin-top: 24px;
 }
 
 .rank {
