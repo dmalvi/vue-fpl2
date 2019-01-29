@@ -1,32 +1,52 @@
 <template>
   <div class="hello">
     <h1>{{ title }}{{ gw }}</h1>
-    <!-- <button class="btn btn-outline-success" @click="checkCurrentEvent">Check event</button> -->
+    <button class="btn btn-outline-primary" @click="extend">Extended View</button>
     <div v-if="allTeamDetails.length && !loading">
       <table class="table">
         <thead>
-          <tr>
-            <th>Rank</th>
-            <th>Name</th>
+          <tr class="table-header">
+            <th class="a-left">Rank</th>
+            <th class="a-left">Name</th>
             <!-- <th>Team ID</th> -->
             <th></th>
-            <th>Points</th>
-            <th>Captain</th>
-            <th>Vice Captain</th>
-            <th>Tranfer Costs</th>
+            <th class="a-left">Captain</th>
+            <transition name="slide-fade">
+            <th v-if="extended" class="a-left">Vice Captain</th>
+            </transition>
+            <transition name="slide-fade">
+            <th v-if="extended">Transfer Costs</th>
+            </transition>
+            <th class="a-right">Points</th>
+            <transition name="slide-fade">
+            <th v-if="extended" class="a-right">GW Points</th>
+            </transition>
+            <transition name="slide-fade">
+            <th v-if="extended" class="a-right">Points on bench</th>
+            </transition>
           </tr>
         </thead>
 
         <tbody v-for="team in allTeamDetails" v-bind:key="team.rank">
           <tr>
             <td class="rank">{{team.rank}} <div :class="team.movement"></div></td>
-            <td>{{team.entry_name}}</td>
-            <td><small v-if="team.gw_chip" class="chip">{{team.gw_chip.toUpperCase()}}</small></td>
+            <td class="a-left">{{team.entry_name}}</td>
             <!-- <td>{{team.entry}}</td> -->
-            <td><strong>{{team.total}}</strong></td>
-            <td>{{team.captain_name}}</td>
-            <td>{{team.viceCaptain_name}}</td>
-            <td v-if="team.transferCost > 0">-{{team.transferCost}}</td>
+            <td class="a-left"><small v-if="team.gw_chip" class="chip">{{team.gw_chip.toUpperCase()}}</small></td>
+            <td class="a-left">{{team.captain_name}}</td>
+            <transition name="slide-fade">
+            <td v-if="extended" class="a-left">{{team.viceCaptain_name}}</td>
+            </transition>
+            <transition name="slide-fade">
+            <td v-if="extended"><p v-if="team.transferCost > 0">-{{team.transferCost}}</p></td>
+            </transition>
+            <td class="a-right"><strong>{{team.total}}</strong></td>
+            <transition name="slide-fade">
+            <td v-if="extended" class="a-right">{{team.gw_points}}</td>
+            </transition>
+            <transition name="slide-fade">
+            <td v-if="extended" class="a-right">{{team.bench_points}}</td>
+            </transition>
           </tr>
         </tbody>
 
@@ -43,7 +63,7 @@
 export default {
   data() {
     return {
-      title: 'FPL | Aspside | GW#: ',
+      title: 'FPL | Aspside | GW# ',
       teams: [],
       details: [],
       playersDb: [],
@@ -51,14 +71,23 @@ export default {
       allTeamDetails: [],
       gw: '',
       statusMsg: '',
-      gwData: []
+      gwData: [],
+      extended: false
     }
   },
   created() {
     this.completeDetails()
   },
   methods: {
+    extend (){
+      if (!this.extended){
+        this.extended = true
+      } else {
+        this.extended = false
+      }
+    },
     async checkCurrentEvent (){
+      // https://fantasy.premierleague.com/drf/events
       this.loading = true
       this.statusMsg = 'checking current gw...'
       let url = 'https://cors-anywhere.herokuapp.com/https://fantasy.premierleague.com/drf/events'
@@ -74,6 +103,7 @@ export default {
     },
     async fetchAspside() {
       // LeagueID: 116190
+      // + ?phase=6&lsPage=1&lePage=1 (phase2 = aug osv...)
       this.statusMsg = 'fetching league...'
       let url = 'https://cors-anywhere.herokuapp.com/https://fantasy.premierleague.com/drf/leagues-classic-standings/116190'
       const leagueResponse = await fetch(url)
@@ -81,7 +111,7 @@ export default {
       this.teams = await leagueResponse.standings.results;
       console.log('02');
     },
-    // https://fantasy.premierleague.com/drf/bootstrap-static
+    // https://fantasy.premierleague.com/drf/bootstrap-static (response.phases = phase definition)
     async fetchPlayerDb() {
       this.statusMsg = 'building player database...'
       let url = 'https://cors-anywhere.herokuapp.com/https://fantasy.premierleague.com/drf/bootstrap-static'
@@ -119,7 +149,9 @@ export default {
           captain_name: '',
           viceCaptain: '',
           viceCaptain_name: '',
+          gw_points: userData.entry_history.points,
           gw_chip: userData.active_chip,
+          bench_points: userData.entry_history.points_on_bench,
           transferCost: userData.entry_history.event_transfers_cost
         };
         for (let players of userData.picks) {
@@ -189,7 +221,34 @@ export default {
 </script>
 
 <style scoped>
-td, th, h1{
+
+.slide-fade-enter-active, .slide-fade-leave-active {
+  transition: all .3s ease;
+}
+.slide-fade-enter, .slide-fade-leave-to
+/* .slide-fade-leave-active below version 2.1.8 */ {
+  transform: translateX(10px);
+  opacity: 0;
+}
+
+.btn {
+  margin: 1.2rem;
+}
+
+.table-header {
+  background-color: darkslategray;
+  color: white;
+}
+
+td, th {
+  text-align: center;
+}
+
+.a-left {
+  text-align: left;
+}
+
+h1{
   text-align: center;
 }
 .status {
