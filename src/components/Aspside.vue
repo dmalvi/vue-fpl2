@@ -1,52 +1,53 @@
 <template>
-  <div class="hello">
-    <h1>{{ title }}{{ gw }}</h1>
-    <button class="btn btn-outline-primary" @click="extend">Extended View</button>
-    <div v-if="allTeamDetails.length && !loading">
-      <table class="table">
-        <thead>
-          <tr class="table-header">
-            <th class="a-left">Rank</th>
-            <th class="a-left">Name</th>
+  <div class="main-container" @click="extend">
+    <div class="header-container">
+      <span class="title-text">
+        FPL <big>|</big> Aspside
+      </span>
+      <!-- <span class="gw-text" v-if="gw">
+        GW# {{ gw }}
+      </span> -->
+      <!-- <button v-if="!loading" class="btn btn-outline-primary" @click="extend">{{ extended ? 'Click to minimize view' : 'Click to extend view' }}</button> -->
+    </div>
+    <div class="table-container" v-if="allTeamDetails.length && !loading">
+      <table class="league-table">
+        <thead class="league-header">
+          <tr class="header-row">
+            <th class="rank-header rank">#</th>
+            <th class="a-left">Team</th>
             <!-- <th>Team ID</th> -->
-            <th></th>
             <th class="a-left">Captain</th>
             <transition name="slide-fade">
             <th v-if="extended" class="a-left">Vice Captain</th>
             </transition>
             <transition name="slide-fade">
-            <th v-if="extended">Transfer Costs</th>
-            </transition>
-            <th class="a-right">Points</th>
-            <transition name="slide-fade">
-            <th v-if="extended" class="a-right">GW Points</th>
+            <th v-if="extended">Transfer costs</th>
             </transition>
             <transition name="slide-fade">
-            <th v-if="extended" class="a-right">Points on bench</th>
+              <th v-if="extended" class="a-right">Points on bench</th>
             </transition>
+            <th class="a-center">GW{{ gw }}</th>
+            <th class="a-center tot">Total</th>
           </tr>
         </thead>
 
-        <tbody v-for="team in allTeamDetails" v-bind:key="team.rank">
-          <tr>
-            <td class="rank">{{team.rank}} <div :class="team.movement"></div></td>
-            <td class="a-left">{{team.entry_name}}</td>
+        <tbody class="league-body" v-for="team in allTeamDetails" v-bind:key="team.rank">
+          <tr class="team-row">
+            <td class="rank-col rank"><span class="rank-content">{{team.rank}}</span><span class="rank-content"><div :class="team.movement"></div></span></td>
+            <td class="a-left">{{team.entry_name}} <small v-if="team.gw_chip" class="chip">{{team.gw_chip.toUpperCase()}}</small></td>
             <!-- <td>{{team.entry}}</td> -->
-            <td class="a-left"><small v-if="team.gw_chip" class="chip">{{team.gw_chip.toUpperCase()}}</small></td>
             <td class="a-left">{{team.captain_name}}</td>
             <transition name="slide-fade">
             <td v-if="extended" class="a-left">{{team.viceCaptain_name}}</td>
             </transition>
             <transition name="slide-fade">
-            <td v-if="extended"><p v-if="team.transferCost > 0">-{{team.transferCost}}</p></td>
-            </transition>
-            <td class="a-right"><strong>{{team.total}}</strong></td>
-            <transition name="slide-fade">
-            <td v-if="extended" class="a-right">{{team.gw_points}}</td>
+            <td v-if="extended"><span v-if="team.transferCost > 0">-{{team.transferCost}}</span></td>
             </transition>
             <transition name="slide-fade">
-            <td v-if="extended" class="a-right">{{team.bench_points}}</td>
+              <td v-if="extended" class="a-right">{{team.bench_points}}</td>
             </transition>
+            <td class="a-center">{{team.gw_points}}</td>
+            <td class="a-right tot"><strong>{{team.total}}</strong></td>
           </tr>
         </tbody>
 
@@ -56,6 +57,9 @@
        <div class="loader"></div>
        <h3 class="status">{{ statusMsg }}</h3>
     </div>
+    <div class="info-box" :style="{'visibility': infoVisibility }">
+      <div class="info-text">Click / Tap anywhere to switch view</div>
+    </div>
   </div>
 </template>
 
@@ -63,7 +67,6 @@
 export default {
   data() {
     return {
-      title: 'FPL | Aspside | GW# ',
       teams: [],
       details: [],
       playersDb: [],
@@ -72,19 +75,31 @@ export default {
       gw: '',
       statusMsg: '',
       gwData: [],
-      extended: false
+      extended: false,
+      infoVisibility: 'hidden',
     }
   },
   created() {
     this.completeDetails()
   },
-  methods: {
-    extend (){
-      if (!this.extended){
-        this.extended = true
-      } else {
-        this.extended = false
+  watch: {
+    loading: function(newValue){
+      if (!newValue){
+          this.infoVisibility = 'visible'
+          setTimeout(this.toggleInfo, 3000)
       }
+    }
+  },
+  methods: {
+    toggleInfo(){
+      if (this.infoVisibility === 'visible'){
+        this.infoVisibility = 'hidden'
+      } else {
+        this.infoVisibility = 'visible'
+      }
+    },
+    extend (){
+      this.extended = !this.extended
     },
     async checkCurrentEvent (){
       // https://fantasy.premierleague.com/drf/events
@@ -121,7 +136,7 @@ export default {
       console.log('04');
     },
     async fetchCaptains() {
-      this.statusMsg = 'fetching captains...'
+      this.statusMsg = 'fetching teamdata...'
       // https://fantasy.premierleague.com/drf/entry/877840/event/22/picks
       let urlPt1 = 'https://cors-anywhere.herokuapp.com/https://fantasy.premierleague.com/drf/entry/';
       let urlPt3 = '/event/';
@@ -175,7 +190,7 @@ export default {
     },
     async completeDetails() {
       let runnerWait = await this.runner();
-      this.statusMsg = 'finishing teams...'
+      this.statusMsg = 'compiling data...'
       let aspsideTeams = [...this.teams]
       let captainsFromDb = [...this.details]
       let finalArr = []
@@ -197,7 +212,7 @@ export default {
     },
     captainNames() {
       // id / first_name / second_name
-      this.statusMsg = 'finishing final details...'
+      this.statusMsg = 'finishing details...'
       let players = [...this.playersDb]
       for (let lag of this.allTeamDetails) {
         players.forEach(function(pl) {
@@ -220,7 +235,8 @@ export default {
 }
 </script>
 
-<style scoped>
+<style>
+/* #2c3e50 */
 
 .slide-fade-enter-active, .slide-fade-leave-active {
   transition: all .3s ease;
@@ -231,40 +247,161 @@ export default {
   opacity: 0;
 }
 
-.btn {
-  margin: 1.2rem;
+html {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100vh;
+  background: rgb(0,61,120);
+  background: linear-gradient(0deg, rgba(0,61,120,1) 0%, rgba(96,177,255,1) 100%);
+  background-attachment: fixed !important;
 }
 
-.table-header {
-  background-color: darkslategray;
+@media only screen
+  and (min-device-width: 375px)
+  and (max-device-width: 667px)
+  and (-webkit-min-device-pixel-ratio: 2)
+  and (orientation: portrait) {
+  .league-table {
+    font-size: 10px;
+  }
+
+  .header-container {
+    font-size: 24px;
+    font-weight: normal;
+  }
+}
+
+.info-box {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: rgb(255, 255, 255);
+  font-weight: 600;
+  background-color: rgba(0, 0, 0, 0.86);
+  width: 50%;
+  /* height: 10vh; */
+  padding: 10% 5%;
+  margin: auto;
+  text-align: center;
+  vertical-align: middle;
+  border-radius: 10px 10px 10px 10px;
+  position: fixed;
+  top: 38vh;
+  left: 20.5%;
+}
+
+.btn {
+  margin: 0.6rem;
+}
+
+.main-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.table-container {
+  display: flex;
+  justify-content: center;
+}
+
+thead, tbody {
+}
+
+.league-table {
+  width: 97%;
+  border-spacing: 0 2px;
+  margin: 1rem auto;
+  border-radius: 10px 10px 0px 0px;
+  overflow: hidden;
+  -webkit-box-shadow: 10px 10px 10px -5px rgba(0,0,0,0.5);
+  -moz-box-shadow: 10px 10px 10px -5px rgba(0,0,0,0.5);
+  box-shadow: 10px 10px 10px -5px rgba(0,0,0,0.5);
+}
+
+th, td{
+  padding: .6em 0;
+}
+
+.header-row {
+  background-color: #3d6694;
   color: white;
 }
 
-td, th {
-  text-align: center;
+.team-row {
+  background-color: #fbfcfc;
 }
 
 .a-left {
   text-align: left;
 }
 
+.a-center {
+  text-align: center;
+}
+
+.chip {
+  color: red;
+}
+
 h1{
   text-align: center;
 }
+
+h2, h3{
+  color: white;
+}
+
+.header-container {
+  display: flex;
+  flex-direction: column;
+  font-weight: 800;
+  color: rgb(255, 255, 255);
+}
+
+.title-text {
+  /* font-family: 'Helvetica'; */
+  text-shadow: 0px 4px 3px rgba(0,0,0,0.4),
+               0px 8px 13px rgba(0,0,0,0.1),
+               0px 18px 23px rgba(0,0,0,0.1);
+  font-size: 48px;
+}
+
+.gw-text {
+  font-size: 20px;
+}
+
+big {
+  color: #3d6694;
+}
+
 .status {
+  text-shadow: 0px 4px 3px rgba(0,0,0,0.4),
+               0px 8px 13px rgba(0,0,0,0.1),
+               0px 18px 23px rgba(0,0,0,0.1);
   text-align: center;
   margin-top: 24px;
 }
 
-.rank {
+.rank-header {
   text-align: left;
-  padding-left: 1.3rem;
+  padding-left: .8em;
+  max-width: 64px;
+}
+
+.rank-col {
+  /* padding-left: 1em; */
   display: flex;
+  max-width: 64px;
+  justify-content: space-around;
+  align-items: center;
+  padding-left: .4em;
+  padding-right: .4em;
   border: 0;
 }
+
 .same {
   align-self: baseline;
-  width: 6px;
+  width: 5px;
   height: 2px;
   border-bottom: 3px solid darkgrey;
   margin: auto;
@@ -276,7 +413,7 @@ h1{
   height: 0;
   border-left: 5px solid transparent;
   border-right: 5px solid transparent;
-  border-bottom: 5px solid green;
+  border-bottom: 5px solid #46a800;
   margin: auto;
 }
 
@@ -285,13 +422,13 @@ h1{
   height: 0;
   border-left: 5px solid transparent;
   border-right: 5px solid transparent;
-  border-top: 5px solid #f00;
+  border-top: 5px solid #c70000;
   margin: auto;
 }
 
 .loader {
-  border: 16px solid #38003c;
-  border-top: 16px solid #00ff87;
+  border: 16px solid rgba(255, 255, 255, 0.4);
+  border-top: 16px solid #003d78;
   border-radius: 50%;
   width: 80px;
   height: 80px;
@@ -305,22 +442,4 @@ h1{
   100% { transform: rotate(360deg); }
 }
 
-.chip {
-  color: red;
-}
-
-h3 {
-  margin: 40px 0 0;
-}
-ul {
-  list-style-type: none;
-  padding: 0;
-}
-li {
-  display: inline-block;
-  margin: 0 10px;
-}
-a {
-  color: #42b983;
-}
 </style>
