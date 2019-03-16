@@ -105,7 +105,7 @@ export default {
       // https://fantasy.premierleague.com/drf/events
       this.loading = true
       this.statusMsg = 'checking current gw...'
-      let url = 'https://cors-anywhere.herokuapp.com/https://fantasy.premierleague.com/drf/events'
+      let url = 'https://fantasy.premierleague.com/drf/events'
       const eventResponse = await fetch(url)
         .then(response => response.json())
       this.gwData = await eventResponse
@@ -120,7 +120,7 @@ export default {
       // LeagueID: 116190
       // + ?phase=6&lsPage=1&lePage=1 (phase2 = aug osv...)
       this.statusMsg = 'fetching league...'
-      let url = 'https://cors-anywhere.herokuapp.com/https://fantasy.premierleague.com/drf/leagues-classic-standings/116190'
+      let url = 'https://fantasy.premierleague.com/drf/leagues-classic-standings/116190'
       const leagueResponse = await fetch(url)
         .then(response => response.json())
       this.teams = await leagueResponse.standings.results;
@@ -129,7 +129,7 @@ export default {
     // https://fantasy.premierleague.com/drf/bootstrap-static (response.phases = phase definition)
     async fetchPlayerDb() {
       this.statusMsg = 'building player database...'
-      let url = 'https://cors-anywhere.herokuapp.com/https://fantasy.premierleague.com/drf/bootstrap-static'
+      let url = 'https://fantasy.premierleague.com/drf/bootstrap-static'
       const pdbResponse = await fetch(url)
         .then(response => response.json())
       this.playersDb = await pdbResponse.elements;
@@ -138,7 +138,7 @@ export default {
     async fetchCaptains() {
       this.statusMsg = 'fetching teamdata...'
       // https://fantasy.premierleague.com/drf/entry/877840/event/22/picks
-      let urlPt1 = 'https://cors-anywhere.herokuapp.com/https://fantasy.premierleague.com/drf/entry/';
+      let urlPt1 = 'https://fantasy.premierleague.com/drf/entry/';
       let urlPt3 = '/event/';
       let urlPt4Gw = this.gw;
       let urlPt5 = '/picks';
