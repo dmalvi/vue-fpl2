@@ -1,3 +1,4 @@
+{{ this.fetchedTeamData[0]['Live Points'] }}
 <template>
   <div class="main-container" @click="extend">
     <div class="header-container">
@@ -9,45 +10,33 @@
       </span> -->
       <!-- <button v-if="!loading" class="btn btn-outline-primary" @click="extend">{{ extended ? 'Click to minimize view' : 'Click to extend view' }}</button> -->
     </div>
-    <div class="table-container" v-if="allTeamDetails.length && !loading">
+    <div class="table-container" v-if="fetchedTeamData.length && !loading">
       <table class="league-table">
         <thead class="league-header">
           <tr class="header-row">
             <th class="rank-header rank">#</th>
             <th class="a-left">Team</th>
-            <!-- <th>Team ID</th> -->
             <th class="a-left">Captain</th>
             <transition name="slide-fade">
             <th v-if="extended" class="a-left">Vice Captain</th>
             </transition>
-            <transition name="slide-fade">
-            <th v-if="extended">Transfer costs</th>
-            </transition>
-            <transition name="slide-fade">
-              <th v-if="extended" class="a-right">Points on bench</th>
-            </transition>
+            <!-- <th class="a-center">Transfer Cost</th> -->
             <th class="a-center">GW{{ gw }}</th>
             <th class="a-center tot">Total</th>
           </tr>
         </thead>
 
-        <tbody class="league-body" v-for="team in allTeamDetails" v-bind:key="team.rank">
+        <tbody class="league-body" v-for="(team, index) in fetchedTeamData" v-bind:key="team.rank">
           <tr class="team-row">
-            <td class="rank-col rank"><span class="rank-content">{{team.rank}}</span><span class="rank-content"><div :class="team.movement"></div></span></td>
-            <td class="a-left">{{team.entry_name}} <small v-if="team.gw_chip" class="chip">{{team.gw_chip.toUpperCase()}}</small></td>
-            <!-- <td>{{team.entry}}</td> -->
-            <td class="a-left">{{team.captain_name}}</td>
+            <td class="rank-col rank"><span class="rank-content">{{ index+1 }}</span></td>
+            <td class="a-left">{{team["Team"]}} </td>
+            <td class="a-left">{{team["Captain"].replace(/([(\d)])/g, '')}}</td>
             <transition name="slide-fade">
-            <td v-if="extended" class="a-left">{{team.viceCaptain_name}}</td>
+            <td v-if="extended" class="a-left">{{team["Vice-Captain"].replace(/([(\d)])/g, '')}}</td>
             </transition>
-            <transition name="slide-fade">
-            <td v-if="extended"><span v-if="team.transferCost > 0">-{{team.transferCost}}</span></td>
-            </transition>
-            <transition name="slide-fade">
-              <td v-if="extended" class="a-right">{{team.bench_points}}</td>
-            </transition>
-            <td class="a-center">{{team.gw_points}}</td>
-            <td class="a-right tot"><strong>{{team.total}}</strong></td>
+            <!-- <td class="a-center">{{team["Transfers (Cost)"].match(/\((-[^)]+)\)/g)}}</td> -->
+            <td class="a-center">{{team["Live Points"]}}</td>
+            <td class="a-right tot"><strong>{{team["Total"]}}</strong></td>
           </tr>
         </tbody>
 
@@ -64,6 +53,19 @@
 </template>
 
 <script>
+
+function compare( a, b ) {
+  if ( a.Total > b.Total ){
+    return -1;
+  }
+  if ( a.Total < b.Total ){
+    return 1;
+  }
+  return 0;
+}
+// myString.replace(/<[^>]*>?/gm, '');
+// objs.sort( compare );
+
 export default {
   data() {
     return {
@@ -77,10 +79,15 @@ export default {
       gwData: [],
       extended: false,
       infoVisibility: 'hidden',
+      cred: {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      },
+      fetchedTeamData: []
     }
   },
   created() {
-    this.completeDetails()
+    this.fetchData()
   },
   watch: {
     loading: function(newValue){
@@ -101,136 +108,15 @@ export default {
     extend (){
       this.extended = !this.extended
     },
-    async checkCurrentEvent (){
-      // https://fantasy.premierleague.com/drf/events
-      this.loading = true
-      this.statusMsg = 'checking current gw...'
-      let url = 'https://fantasy.premierleague.com/drf/events'
-      const eventResponse = await fetch(url)
+    async fetchData (){
+      this.loading = true;
+      const url = "https://cors-anywhere.herokuapp.com/https://www.anewpla.net/fpl/league/json.php?id=7168";
+      const eventResponse = await fetch(url, this.cred)
         .then(response => response.json())
-      this.gwData = await eventResponse
-      for (let gameweek of this.gwData){
-        if (gameweek.is_current) {
-          this.gw = gameweek.id
-        }
-      }
-      console.log('01');
+      let teamData = await eventResponse.data;
+      this.fetchedTeamData = teamData.sort(compare);
+      this.loading= false;
     },
-    async fetchAspside() {
-      // LeagueID: 116190
-      // + ?phase=6&lsPage=1&lePage=1 (phase2 = aug osv...)
-      this.statusMsg = 'fetching league...'
-      let url = 'https://fantasy.premierleague.com/drf/leagues-classic-standings/116190'
-      const leagueResponse = await fetch(url)
-        .then(response => response.json())
-      this.teams = await leagueResponse.standings.results;
-      console.log('02');
-    },
-    // https://fantasy.premierleague.com/drf/bootstrap-static (response.phases = phase definition)
-    async fetchPlayerDb() {
-      this.statusMsg = 'building player database...'
-      let url = 'https://fantasy.premierleague.com/drf/bootstrap-static'
-      const pdbResponse = await fetch(url)
-        .then(response => response.json())
-      this.playersDb = await pdbResponse.elements;
-      console.log('04');
-    },
-    async fetchCaptains() {
-      this.statusMsg = 'fetching teamdata...'
-      // https://fantasy.premierleague.com/drf/entry/877840/event/22/picks
-      let urlPt1 = 'https://fantasy.premierleague.com/drf/entry/';
-      let urlPt3 = '/event/';
-      let urlPt4Gw = this.gw;
-      let urlPt5 = '/picks';
-      for (let team of this.teams) {
-        let urlPt2TeamId = team.entry;
-        // let cAndVc = {
-        //   teamId: team.entry,
-        //   name: team.entry_name,
-        //   captain: '',
-        //   captain_name: '',
-        //   viceCaptain: '',
-        //   viceCaptain_name: '',
-        //   gw_chip: '',
-        //   transferCost: ''
-        // };
-        let capFetch = await fetch(urlPt1 + urlPt2TeamId + urlPt3 + urlPt4Gw + urlPt5)
-          .then(response => response.json())
-        let userData = await capFetch
-        let cAndVc = {
-          teamId: team.entry,
-          name: team.entry_name,
-          captain: '',
-          captain_name: '',
-          viceCaptain: '',
-          viceCaptain_name: '',
-          gw_points: userData.entry_history.points,
-          gw_chip: userData.active_chip,
-          bench_points: userData.entry_history.points_on_bench,
-          transferCost: userData.entry_history.event_transfers_cost
-        };
-        for (let players of userData.picks) {
-          if (players.is_captain) {
-            cAndVc.captain = players.element;
-          }
-          if (players.is_vice_captain) {
-            cAndVc.viceCaptain = players.element;
-          }
-        }
-        this.details.push(cAndVc);
-      }
-      console.log('03');
-    },
-    async runner() {
-      const zero = await this.checkCurrentEvent();
-      const one = await this.fetchAspside();
-      const two = await this.fetchCaptains();
-      const three = await this.fetchPlayerDb();
-      return zero + one + two + three
-    },
-    async completeDetails() {
-      let runnerWait = await this.runner();
-      this.statusMsg = 'compiling data...'
-      let aspsideTeams = [...this.teams]
-      let captainsFromDb = [...this.details]
-      let finalArr = []
-      for (let team of aspsideTeams) {
-        let objToPush = {}
-        captainsFromDb.forEach(function(tm) {
-          if (tm.teamId === team.entry) {
-            objToPush = { ...tm,
-              ...team
-            }
-            finalArr.push(objToPush)
-          }
-        })
-      }
-      this.allTeamDetails = finalArr;
-      console.log('05');
-      this.captainNames()
-      console.log('07 Done and done!');
-    },
-    captainNames() {
-      // id / first_name / second_name
-      this.statusMsg = 'finishing details...'
-      let players = [...this.playersDb]
-      for (let lag of this.allTeamDetails) {
-        players.forEach(function(pl) {
-          if (pl.id === lag.captain) {
-            lag.captain_name = pl.second_name
-            // lag.captain_name = pl.first_name + ' ' + pl.second_name
-          } else if (pl.id === lag.viceCaptain) {
-            lag.viceCaptain_name = pl.second_name
-            // lag.viceCaptain_name = pl.first_name + ' ' + pl.second_name
-          } else {
-            return null
-          }
-        });
-      }
-      this.statusMsg = '';
-      this.loading = false;
-      console.log('06');
-    }
   },
 }
 </script>
